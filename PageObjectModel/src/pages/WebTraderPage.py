@@ -10,6 +10,7 @@ class WebTraderPage:
         self.coin = None
         self.tab = None
         self.trade_order = None
+        self.notification_list_result_item = None
         self.trade_order_type_dropdown  = By.XPATH, "//*[@data-testid='trade-dropdown-order-type']"
         self.trade_order_type           = None
         self.trade_units_input          = By.XPATH, "//*[@data-testid='trade-input-volume']"
@@ -49,6 +50,23 @@ class WebTraderPage:
         self.tab_asset_order_type_open_positions = By.XPATH, "//*[@data-testid='tab-asset-order-type-open-positions']"
         self.tab_asset_order_type_pending_orders = By.XPATH, "//*[@data-testid='tab-asset-order-type-pending-orders']"
         
+        
+        #Notification
+        self.notification_description       = By.XPATH, "//*[@data-testid='notification-description']"
+        self.notification_close_btn         = By.XPATH, "//*[@data-testid='notification-close-button']"
+        self.notification_selector          = By.XPATH, "//*[@data-testid='notification-selector']"
+        self.notification_list_result       = By.XPATH, "//*[@data-testid='notification-list-result']"
+        self.notification_list_result_item  = By.XPATH, "//*[@data-testid='notification-list-result-item']"
+        
+        #Order detail
+        self.order_detail_modal         = By.XPATH, "//*[@data-testid='notification-order-details-modal']"
+        self.order_detail_symbol        = By.XPATH, "(//*[@data-testid='notification-order-details-value'])[1]"
+        self.order_detail_order_no      = By.XPATH, "(//*[@data-testid='notification-order-details-value'])[3]"
+        self.order_detail_size          = By.XPATH, "(//*[@data-testid='notification-order-details-value'])[4]"
+        self.order_detail_unit          = By.XPATH, "(//*[@data-testid='notification-order-details-value'])[5]"
+        self.order_detail_entry_price   = By.XPATH, "(//*[@data-testid='notification-order-details-value'])[6]"
+        self.order_detail_close_btn     = By.XPATH, "//*[@data-testid='notification-order-details-modal-close']"
+        
     def set_option(self, _option):
         #Sets the locator for a specific sidebar option.
         self.option = By.XPATH, f"//*[@data-testid='side-bar-option-{_option}']"
@@ -72,6 +90,10 @@ class WebTraderPage:
     def set_trade_order_type(self, _order_type):
         #Sets the locator for a specific coin.
         self.trade_order_type = By.XPATH, f"//*[@data-testid='trade-dropdown-order-type-{_order_type}']"
+    
+    def set_notification_list_result_item(self, _num_order):
+        #Sets the locator for a specific coin.
+        self.notification_list_result_item = By.XPATH, f"(//*[@data-testid='notification-list-result-item'])[{_num_order}]"
 
     def select_option(self, option):
         #Selects the specified sidebar option.
@@ -312,3 +334,30 @@ class WebTraderPage:
                 
         except Exception as e:
             raise RuntimeError(f"Failed to edit open positions : {e}")
+    
+    def split_the_result_and_extract_variables(self, result_string):
+        order_no = result_string.split("#")[1].split(" ")[0]
+        symbol      = result_string.split("#")[1].split(" ")[1].split(":")[0]
+        size        = result_string.split("Size ")[1].split(" ")[0]
+        units       = result_string.split("Units ")[1].split(" ")[0]
+        entry_price = result_string.split("@ ")[1]
+        return order_no, symbol, size, units, entry_price
+    
+    def validate_the_order_placed_details_with_compare_to_notifications_and_position_table_details(self, num_order):
+        wait_until_invisible(self.driver, 10, self.notification_description)
+        #self.driver.find_element(*self.notification_close_btn).click
+        self.driver.find_element(*self.notification_selector).click()
+        wait_until_visible(self.driver, 10, self.notification_list_result)
+        self.set_notification_list_result_item(num_order)
+        result_detail = self.driver.find_element(*self.notification_list_result_item).text
+        self.driver.find_element(*self.notification_list_result_item).click()
+        wait_until_visible(self.driver, 10, self.order_detail_modal)
+        self.driver.find_element(By.XPATH, "//form[@class='sc-19cupja-3 iZHyXr']")
+        order_no, symbol, size, units, entry_price = self.split_the_result_and_extract_variables(result_detail)
+        assert symbol       == self.driver.find_element(*self.order_detail_symbol).click()
+        assert order_no     == self.driver.find_element(*self.order_detail_order_no).text
+        assert size         == self.driver.find_element(*self.order_detail_size).text
+        assert units        == self.driver.find_element(*self.order_detail_unit).text
+        assert entry_price  == self.driver.find_element(*self.order_detail_entry_price).text
+        self.driver.find_element(*self.order_detail_close_btn).click()
+        

@@ -23,6 +23,12 @@ def wait_until_visible(driver, wait_seconds, locator):
     except Exception as e:
         raise RuntimeError(f"Element not visible after {wait_seconds} seconds: {e}")
 
+def wait_until_invisible(driver, wait_seconds, locator):
+    try:
+        WebDriverWait(driver, wait_seconds).until(EC.invisibility_of_element(locator))
+    except Exception as e:
+        raise RuntimeError(f"Element still visible after {wait_seconds} seconds: {e}")
+
 logging.basicConfig(
     level=logging.DEBUG,  # This sets the log level (e.g., DEBUG, INFO)
     format='%(asctime)s - %(levelname)s - %(message)s',  # Format of the log message
