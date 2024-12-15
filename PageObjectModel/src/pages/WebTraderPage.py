@@ -33,6 +33,7 @@ class WebTraderPage:
         self.edit_input_takeprofit_price = By.XPATH, "//*[@data-testid='edit-input-takeprofit-price']"
         self.edit_confirmation_modal     = By.XPATH, "//*[@data-testid='edit-confirmation-modal']"
         self.edit_button_order           = By.XPATH, "//*[@data-testid='edit-button-order']"
+        self.edit_expiry_dropdown        = By.XPATH, "//*[@data-testid='edit-dropdown-expiry']" 
         
         self.asset_open_button_close            = By.XPATH, "(//*[@data-testid='asset-open-button-close'])[1]"
         self.confirm_close_order_modal          = By.XPATH, "//*[@class='sc-ur24yu-1 eqxJBS']"
@@ -45,6 +46,9 @@ class WebTraderPage:
         self.limit_expiry_dropdown = By.XPATH, "//*[@data-testid='trade-dropdown-expiry']" 
         self.limit_expiry_good_till_cancelled = By.XPATH, "//*[@data-testid='trade-dropdown-expiry-good-till-cancelled']"
         self.limit_expiry_good_till_day = By.XPATH, "//*[@data-testid='trade-dropdown-expiry-good-till-day']"
+        self.edit_limit_expiry_good_till_cancelled = By.XPATH, "//*[@data-testid='edit-dropdown-expiry-good-till-cancelled']"
+        self.edit_limit_expiry_good_till_day = By.XPATH, "//*[@data-testid='edit-dropdown-expiry-good-till-day']"
+        self.edit_confirmation_button_confirm = By.XPATH, "//*[@data-testid='edit-confirmation-button-confirm']"
         
         self.asset_pending_button_edit      = By.XPATH, "//*[@data-testid='asset-pending-button-edit']"
         self.tab_asset_order_type_open_positions = By.XPATH, "//*[@data-testid='tab-asset-order-type-open-positions']"
@@ -299,6 +303,20 @@ class WebTraderPage:
                 logging.error("Expiry type is incorrect, please check again")
         except Exception as e:
             raise RuntimeError(f"Failed to select Expiry type '{expiry_type}': {e}")
+        
+    def select_edit_expiry_type(self, expiry_type):
+        #Selects the specified Expiry type from dropdown.
+        try:
+            wait_until_visible(self.driver, 10, self.edit_expiry_dropdown)
+            self.driver.find_element(*self.edit_expiry_dropdown).click()
+            if expiry_type.lower() == "good till cancelled":
+                self.driver.find_element(*self.edit_limit_expiry_good_till_cancelled).click()
+            elif expiry_type.lower() == "good till day":
+                self.driver.find_element(*self.edit_limit_expiry_good_till_day).click()
+            else:
+                logging.error("Expiry type is incorrect, please check again")
+        except Exception as e:
+            raise RuntimeError(f"Failed to select Expiry type '{expiry_type}': {e}")
     
     def edit_pending_orders(self, input_price=None, stoploss_price=None, takeprofit_price=None, expiry_type=None):
         try:
@@ -329,8 +347,10 @@ class WebTraderPage:
                     input_takeprofit_price.clear()
                     input_takeprofit_price.send_keys(takeprofit_price)
                 if expiry_type!=None:
-                    self.select_expiry_type(self, expiry_type)
+                    self.select_edit_expiry_type(expiry_type)
                 self.driver.find_element(*self.edit_button_order).click()
+                self.driver.find_element(*self.edit_confirmation_button_confirm).click()
+                wait_until_invisible(self.driver, 10, self.edit_confirmation_modal)
                 
         except Exception as e:
             raise RuntimeError(f"Failed to edit open positions : {e}")
@@ -344,15 +364,14 @@ class WebTraderPage:
         return order_no, symbol, size, units, entry_price
     
     def validate_the_order_placed_details_with_compare_to_notifications_and_position_table_details(self, num_order):
-        wait_until_invisible(self.driver, 10, self.notification_description)
+        wait_until_invisible(self.driver, 20, self.notification_description)
         #self.driver.find_element(*self.notification_close_btn).click
         self.driver.find_element(*self.notification_selector).click()
-        wait_until_visible(self.driver, 10, self.notification_list_result)
+        wait_until_visible(self.driver, 20, self.notification_list_result)
         self.set_notification_list_result_item(num_order)
         result_detail = self.driver.find_element(*self.notification_list_result_item).text
         self.driver.find_element(*self.notification_list_result_item).click()
         wait_until_visible(self.driver, 10, self.order_detail_modal)
-        self.driver.find_element(By.XPATH, "//form[@class='sc-19cupja-3 iZHyXr']")
         order_no, symbol, size, units, entry_price = self.split_the_result_and_extract_variables(result_detail)
         assert symbol       == self.driver.find_element(*self.order_detail_symbol).click()
         assert order_no     == self.driver.find_element(*self.order_detail_order_no).text
